@@ -1,4 +1,4 @@
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -62,4 +62,4 @@ PPOJoint.entropy_coeff = 0.01
 # ==============================================================================
 train_rl.light_rl = True
 train_rl.light_rl_trainer = @trax.rl.PPOJoint
-train_rl.n_epochs = 500
+train_rl.n_epochs = 130

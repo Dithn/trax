@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Tests for rnn layers."""
 
 from absl.testing import absltest
@@ -35,7 +34,7 @@ class RnnTest(parameterized.TestCase):
   def test_conv_gru_cell(self, backend):
     with fastmath.use_backend(backend):
       layer = tl.ConvGRUCell(9, kernel_size=(3, 3))
-      x = np.ones((8, 1, 7, 9))
+      x = np.ones((8, 1, 7, 9), dtype=np.float32)
       _, _ = layer.init(shapes.signature(x))
       y = layer(x)
       self.assertEqual(y.shape, x.shape)

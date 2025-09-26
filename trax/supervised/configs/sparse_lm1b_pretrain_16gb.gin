@@ -1,4 +1,4 @@
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -94,7 +94,7 @@ ConfigurableTransformerLM.attention_type = %attn_type
 ConfigurableTransformerLM.ff_use_sru = 0
 ConfigurableTransformerLM.loss_sparsity = %loss_sparsity
 
-# Parameters for Reformer2:
+# Parameters for ConfigurableTerraformer:
 # ==============================================================================
 ReformerLM.d_model = %d_model  # was  512
 ReformerLM.d_ff = %d_ff        # was 2048

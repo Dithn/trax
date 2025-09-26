@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Probability distributions for RL training in Trax."""
 
 import gin
@@ -110,7 +109,7 @@ class Categorical(Distribution):
     )
 
   def entropy(self, inputs):
-    log_probs = inputs
+    log_probs = tl.LogSoftmax()(inputs)
     probs = jnp.exp(log_probs)
     return -jnp.sum(probs * log_probs, axis=-1)
 

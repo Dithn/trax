@@ -1,4 +1,4 @@
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Sweep 1:
-rel_chunk_len: [null, 512, 1024]
-vanilla_chunk_len: [null, 128, 256, 512]
-
-# Sweep 2:
-n_layers: [12, 24]
-n_heads: [16, 8]
+# Task difficulty:
+copy_length: [3, 4, 6, 8]
+# Model params:
+TransformerDecoder.n_layers: [1, 2, 3]
+d_model: [32, 64, 128, 256, 512]

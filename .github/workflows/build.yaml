@@ -1,4 +1,4 @@
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ jobs:
         python -m pip install -q -U setuptools numpy
         python -m pip install flake8 pytest
         if [[ ${{matrix.tf-version}} == "tf-nightly" ]]; then python -m pip install tf-nightly; else python -m pip install -q "tensorflow=="${{matrix.tf-version}}; fi
-        pip install -e .[tests]
+        pip install -e .[tests,t5]
     # # Lint with flake8
     # - name: Lint with flake8
     #   run: |

@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Layers: trainable functions as neural network building blocks."""
 
 import gin
@@ -36,6 +35,8 @@ from trax.layers.pooling import *
 from trax.layers.research.efficient_attention import *
 from trax.layers.research.position_encodings import *
 from trax.layers.research.rel_attention import *
+from trax.layers.research.resampling import *
+from trax.layers.research.rotary_positional_embedding import *
 from trax.layers.research.sparsity import *
 from trax.layers.reversible import *
 from trax.layers.rnn import *
@@ -97,6 +98,8 @@ PureLSHSelfAttentionWrapper = layer_configure(
     PureLSHSelfAttentionWrapper, denylist=['mode'])
 EncDecAttention = layer_configure(EncDecAttention, denylist=['mode'])
 
+PositionalEncoding = layer_configure(
+    PositionalEncoding, denylist=['mode'])
 InfinitePositionalEncoding = layer_configure(
     InfinitePositionalEncoding, denylist=['mode'])
 TimeBinPositionalEncoding = layer_configure(
@@ -112,3 +115,11 @@ MacroAveragedFScore = layer_configure(MacroAveragedFScore)
 WeightedFScore = layer_configure(WeightedFScore)
 RelativeAttentionLayer = layer_configure(RelativeAttentionLayer)
 RelativeAttentionLMLayer = layer_configure(RelativeAttentionLMLayer)
+RelativeAttentionWrapper = layer_configure(RelativeAttentionWrapper)
+Rotate = layer_configure(Rotate)
+AveragePooling = layer_configure(AveragePooling)
+LinearPooling = layer_configure(LinearPooling)
+LinearUpsampling = layer_configure(LinearUpsampling)
+NoUpsampling = layer_configure(NoUpsampling)
+NaiveUpsampling = layer_configure(NaiveUpsampling)
+AttentionResampling = layer_configure(AttentionResampling)

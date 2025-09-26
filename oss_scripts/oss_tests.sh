@@ -1,4 +1,4 @@
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -114,7 +114,9 @@ else
   pytest \
     --ignore=trax/models/reformer/reformer_e2e_test.py \
     --ignore=trax/models/reformer/reformer_memory_test.py \
-    --ignore=trax/models/reformer/reformer_oom_test.py \
+    --ignore=trax/models/research/terraformer_e2e_test.py \
+    --ignore=trax/models/research/terraformer_memory_test.py \
+    --ignore=trax/models/research/terraformer_oom_test.py \
     trax/models
   set_status
 

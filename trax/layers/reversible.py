@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Layers that can run in reverse to compute inputs from outputs.
 
 Reversible layers reduce the memory required for backpropagation-based
@@ -334,7 +333,7 @@ class ReversibleHalfResidual(ReversibleLayer):
       state_to_pass = state[0]  # old_state
 
       # _replace_second_time is currently used exclusively in _RememberInReverse
-      # layer to combat numerical instability in Reformer2 when quantizing
+      # layer to combat numerical instability in Terraformer when quantizing
       # the mask in SparseFF.
       def _replace_second_time(stt, nstt):
         if (isinstance(stt, tuple) and len(stt) == 2 and

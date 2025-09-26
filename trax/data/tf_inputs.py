@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
-"""Trax TF input pipeline."""
+"""TensorFlow data sources and associated prepocessing functions."""
 
 import functools
 import itertools
@@ -29,8 +28,9 @@ import gin
 import jax
 import numpy as np
 import scipy
-import t5.data
+import scipy.special
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 import tensorflow_datasets as tfds
 import tensorflow_text as tf_text
 from trax import data
@@ -45,6 +45,18 @@ from trax.fastmath import numpy as jnp
 # For now, we skip at most 100K examples for efficiency.
 # TODO(lukaszkaiser): can we improve efficiency, should that be changed?
 _MAX_SKIP_EXAMPLES = 1e5
+
+
+def t5_data():
+  """Get the T5 data module if available."""
+  module = None
+  try:
+    import t5.data  # pylint: disable=g-import-not-at-top
+    module = t5.data
+  except AttributeError as e:
+    logging.error('pip install t5')
+    raise e
+  return module
 
 
 def no_preprocess(dataset, training):
@@ -174,7 +186,7 @@ def _shuffle_data(dataset, target_names, training, shuffle_buffer_size,
     # Skip a random fraction at the beginning of the stream.  The skip is
     # essential for synchronous highly-parallel training to avoid multiple
     # replicas reading the same data in lock-step.
-    dataset = dataset.skip(random.randint(0, _MAX_SKIP_EXAMPLES))
+    dataset = dataset.skip(random.randint(0, int(_MAX_SKIP_EXAMPLES)))
   dataset = preprocess_fn(dataset, training)
   dataset = dataset.shuffle(shuffle_buffer_size)
   return dataset.prefetch(8)
@@ -226,30 +238,36 @@ def _train_and_eval_dataset(dataset_name,
   if dataset_name != 'c4/multilingual' and tfds.Split.TRAIN not in splits:
     raise ValueError('To train we require a train split in the dataset.')
   train_split = tfds.Split.TRAIN if dataset_name != 'c4/multilingual' else 'en'
+  eval_split = None
   train_examples = info.splits[train_split].num_examples
   eval_holdout_examples = int(train_examples * eval_holdout_size)
   if eval_holdout_examples > 0 or subsplit is not None:
+    if subsplit is None:
+      subsplit = (0, 1)
     n_train = train_examples - eval_holdout_examples
     train_start = int(n_train * subsplit[0])
     train_end = int(n_train * subsplit[1])
     if train_end - train_start < 1:
       raise ValueError('Requested train subsplit has no examples: '
                        'n_train %d subsplit %s' % (n_train, subsplit))
+    # Eval holdout examples from the end of the training set.
+    if eval_holdout_examples > 0:
+      eval_split = f'{train_split}[-{eval_holdout_examples}:]'
+    # Shard the training set for this host.
     train_split = f'{train_split}[{train_start}:{train_end}]'
 
-  if eval_holdout_examples > 0:
-    eval_split = f'{train_split}[{eval_holdout_examples}:]'
-  elif dataset_name == 'glue/mnli':
+  if dataset_name == 'glue/mnli':
     eval_split = (
         'validation_mismatched' if use_alt_eval else 'validation_matched')
   elif dataset_name == 'c4/multilingual':
     eval_split = 'en-validation'
-  else:
+  elif eval_split is None:
     if tfds.Split.VALIDATION not in splits and 'test' not in splits:
       raise ValueError('We require a validation or test split in the dataset.')
     eval_split = tfds.Split.VALIDATION
     if tfds.Split.VALIDATION not in splits:
       eval_split = tfds.Split.TEST
+
   train = tfds.load(
       name=dataset_name,
       split=train_split,
@@ -309,7 +327,7 @@ def TFDS(  # pylint: disable=invalid-name
   """
   data_dir = download_and_prepare(dataset_name, data_dir)
 
-  host_id = jax.host_id() if host_id is None else host_id
+  host_id = jax.process_index() if host_id is None else host_id
   n_hosts = n_hosts or jax.host_count()
   if n_hosts > 1:
     subsplit = (host_id / n_hosts, (host_id + 1) / n_hosts)
@@ -363,13 +381,13 @@ def _train_and_eval_dataset_v1(problem_name, data_dir, train_shuffle_files,
       hparams = problem.get_hparams()
       bair_robot_pushing_hparams(hparams)
     train_dataset = problem.dataset(
-        tf.estimator.ModeKeys.TRAIN,
+        tf_estimator.ModeKeys.TRAIN,
         data_dir,
         shuffle_files=train_shuffle_files,
         hparams=hparams)
     train_dataset = train_dataset.map(_select_features)
     eval_dataset = problem.dataset(
-        tf.estimator.ModeKeys.EVAL,
+        tf_estimator.ModeKeys.EVAL,
         data_dir,
         shuffle_files=eval_shuffle_files,
         hparams=hparams)
@@ -583,8 +601,8 @@ def _get_vocab(vocab_type='subword', vocab_file=None, vocab_dir=None,
     return text_encoder.BertEncoder(path, do_lower_case=True)
 
   assert vocab_type == 'sentencepiece'
-  return t5.data.SentencePieceVocabulary(sentencepiece_model_file=path,
-                                         extra_ids=extra_ids)
+  return t5_data().SentencePieceVocabulary(sentencepiece_model_file=path,
+                                           extra_ids=extra_ids)
 
 
 # Makes the function accessible in gin configs, even with all args denylisted.
@@ -843,7 +861,7 @@ def bair_robot_pushing_preprocess(dataset, training):
 
 def sentencepiece_tokenize(stream, spm_path=None, extra_ids=0):
   """Sentencepiece tokenization."""
-  spm_path = spm_path or t5.data.DEFAULT_SPM_PATH
+  spm_path = spm_path or t5_data().DEFAULT_SPM_PATH
   vocab_file = os.path.basename(spm_path)
   vocab_dir = os.path.dirname(spm_path)
   vocab = _get_vocab(vocab_type='sentencepiece',
@@ -892,7 +910,7 @@ def c4_preprocess(dataset,
     return features, features['targets']
 
   if tokenization == 'spc':
-    spm_path = spm_path or t5.data.DEFAULT_SPM_PATH
+    spm_path = spm_path or t5_data().DEFAULT_SPM_PATH
     with tf.compat.v1.gfile.GFile(spm_path, 'rb') as f:
       spc_model = f.read()
     tokenizer = tf_text.SentencepieceTokenizer(model=spc_model)
@@ -917,7 +935,7 @@ def c4_bare_preprocess_fn(dataset,
                           sequence_length=None):
   """Returns a dataset that contains 'inputs' and 'targets' from C4."""
   # Set target key to be equal to the text content.
-  dataset = t5.data.preprocessors.rekey(
+  dataset = t5_data().preprocessors.rekey(
       dataset, key_map={
           'targets': 'text',
           'inputs': None
@@ -925,10 +943,10 @@ def c4_bare_preprocess_fn(dataset,
 
   # Vocabulary for tokenization.
   extra_ids = 0
-  vocab = t5.data.SentencePieceVocabulary(
-      sentencepiece_model_file=spm_path or t5.data.DEFAULT_SPM_PATH,
+  vocab = t5_data().SentencePieceVocabulary(
+      sentencepiece_model_file=spm_path or t5_data().DEFAULT_SPM_PATH,
       extra_ids=extra_ids)
-  feature = t5.data.Feature(vocab)
+  feature = t5_data().Feature(vocab)
   output_features = {'targets': feature, 'inputs': feature}
 
   # Tokenize the targets.
@@ -957,7 +975,7 @@ def c4_bare_preprocess_fn(dataset,
       num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
   # Preprocess the tokens - the exact preprocessors are set via gin.
-  dataset = t5.data.preprocessors.unsupervised(
+  dataset = t5_data().preprocessors.unsupervised(
       dataset, sequence_length=sequence_length, output_features=output_features)
 
   # Add EOS.
@@ -1134,14 +1152,14 @@ def generic_text_dataset_preprocess_fn(dataset,
 
   # Vocabulary for tokenization.
   extra_ids = 0
-  vocab = t5.data.SentencePieceVocabulary(
-      sentencepiece_model_file=spm_path or t5.data.DEFAULT_SPM_PATH,
+  vocab = t5_data().SentencePieceVocabulary(
+      sentencepiece_model_file=spm_path or t5_data().DEFAULT_SPM_PATH,
       extra_ids=extra_ids)
-  feature = t5.data.Feature(vocab)
+  feature = t5_data().Feature(vocab)
   output_features = {'targets': feature, 'inputs': feature}
 
   # Tokenize the inputs and targets.
-  dataset = t5.data.preprocessors.tokenize(
+  dataset = t5_data().preprocessors.tokenize(
       dataset, output_features, copy_pretokenized=copy_pretokenized)
 
   # Apply the token-preprocessors.
@@ -1190,7 +1208,7 @@ def get_t5_preprocessor_by_name(name=None, fn_kwargs=None):
   """
 
   assert name is not None
-  f = getattr(t5.data.preprocessors, name)
+  f = getattr(t5_data().preprocessors, name)
   if fn_kwargs is not None:
     f = functools.partial(f, **fn_kwargs)
   return lambda ds, unused_training: f(ds)
@@ -1377,7 +1395,7 @@ def BertNextSentencePredictionInputs(dataset_name,  # pylint: disable=invalid-na
       dataset_name,
       data_dir=data_dir,
       tfds_preprocess_fn=functools.partial(
-          t5.data.preprocessors.next_sentence_prediction,
+          t5_data().preprocessors.next_sentence_prediction,
           text_key=text_key,
           label_sentences=True,
           buffer_size=shuffle_size),
@@ -1403,7 +1421,7 @@ def CorpusToRandomChunks(dataset_name, num_tokens=512, train=True):  # pylint: d
   return TFDS(
       dataset_name,
       tfds_preprocess_fn=functools.partial(
-          t5.data.preprocessors.random_split_text,
+          t5_data().preprocessors.random_split_text,
           max_words_per_segment=num_tokens),
       train=train,
       keys=['text'])
@@ -1524,7 +1542,10 @@ def T5GlueTrainStream(benchmark=gin.REQUIRED):
 
 
 @gin.configurable(module='trax.data')
-def T5GlueTrainStreamsParallel(benchmark_list=gin.REQUIRED, counters=None):
+def T5GlueTrainStreamsParallel(benchmark_list=gin.REQUIRED,
+                               counters=None,
+                               reweight_by_minimum=False,
+                               gradually_reweight=False):
   """Returns a parallel set of training streams, based on ``benchmark_list``.
 
   Args:
@@ -1535,9 +1556,16 @@ def T5GlueTrainStreamsParallel(benchmark_list=gin.REQUIRED, counters=None):
     benchmark_list = ["cola", "mnli", "rte"], see
     https://github.com/google-research/text-to-text-transfer-transformer/blob/master/t5/data/glue_utils.py#L42
     for more details on counters.
+    reweight_by_minimum: divide by the minimal counter.
+    gradually_reweight: a more refined reweighting policy, see inputs.py
+      for more details.
   """
   stream_list = list(map(T5GlueTrainStream, benchmark_list))
-  return data.Parallel(stream_list, counters)()
+  return data.Parallel(
+      stream_list,
+      counters=counters,
+      reweight_by_minimum=reweight_by_minimum,
+      gradually_reweight=gradually_reweight)()
 
 
 @gin.configurable(module='trax.data')
@@ -1628,7 +1656,7 @@ def _t5_glue_data_split_no_token(benchmark_id):
   """Returns a GLUE data split prepared with the standard T5 preprocessor."""
   benchmark, split = _t5_glue_benchmark_and_split(benchmark_id)
   dataset = tfds.load(name=f'glue/{benchmark}', split=split)
-  processed_dataset = t5.data.preprocessors.glue(  # pylint: disable=g-long-lambda
+  processed_dataset = t5_data().preprocessors.glue(  # pylint: disable=g-long-lambda
       dataset,
       benchmark_name=benchmark,
       label_names=_GLUE_LABELS[benchmark])
@@ -1652,9 +1680,9 @@ def _t5_glue_data_split(benchmark_id):
   dataset = tfds.load(name=f'glue/{benchmark}', split=split)
   processed_dataset = generic_text_dataset_preprocess_fn(
       dataset,
-      spm_path=t5.data.DEFAULT_SPM_PATH,
+      spm_path=t5_data().DEFAULT_SPM_PATH,
       text_preprocess_fns=[
-          lambda ds, training: t5.data.preprocessors.glue(  # pylint: disable=g-long-lambda
+          lambda ds, training: t5_data().preprocessors.glue(  # pylint: disable=g-long-lambda
               ds,
               benchmark_name=benchmark,
               label_names=_GLUE_LABELS[benchmark])
@@ -1738,7 +1766,7 @@ def compute_single_result(op_name, num_args):
   elif op_name == 'gain_percent':
     return 100 + num_args[0]
   elif op_name == 'gcd':
-    return scipy.gcd(int(num_args[0]), int(num_args[1]))
+    return np.gcd(int(num_args[0]), int(num_args[1]))
   elif op_name == 'inverse':
     if num_args[0] != 0:
       return 1 / num_args[0]
@@ -1901,7 +1929,7 @@ def single_op_to_python_command(op_name, num_args):
   elif op_name == 'circumface':
     return '2 * math.pi * {}'.format(num_args[0])
   elif op_name == 'choose':
-    return 'scipy.misc.comb({}, {})'.format(num_args[0], num_args[1])
+    return 'scipy.special.comb({}, {})'.format(num_args[0], num_args[1])
   elif op_name == 'cosine':
     return 'math.cos({})'.format(num_args[0])
   elif op_name == 'cube_edge_by_volume':
@@ -1933,7 +1961,7 @@ def single_op_to_python_command(op_name, num_args):
   elif op_name == 'gain_percent':
     return '100 + {}'.format(num_args[0])
   elif op_name == 'gcd':
-    return 'scipy.gcd(int({}), int({}))'.format(num_args[0], num_args[1])
+    return 'np.gcd(int({}), int({}))'.format(num_args[0], num_args[1])
   elif op_name == 'inverse':
     # safe inverse
     if num_args[0] != 0:
@@ -2175,13 +2203,81 @@ def convert_to_subtract(const_string):
   return 'subtract({},const_0)'.format(const_string)
 
 
+def execute_mathqa_dsl_program(problem, dsl_code):
+  """Executes the DSL code for a given problem.
+
+  Args:
+    problem: problem formulation (needed to get parameters).
+    dsl_code: DSL code.
+
+  Returns:
+    the result of executing of the DSL code.
+  """
+  n0_loc = problem.find('n0')
+  list_num = compute_nums(problem[n0_loc:])
+  # The list contains _all_ numbers in the string, hence in particular
+  # for n0 = 2.0 n1 = 3.0 we are getting list_num = [0.0, 2.0, 1.0, 3.0],
+  # so that below we are filtering the odd occurrences.
+  assert len(list_num) % 2 == 0
+  list_num = [list_num[2 * i + 1] for i in range(int(len(list_num) / 2))]
+
+  # dsl_code is a list of strings; since all DSL programs are single liners,
+  # we need to guess the correct line. For now we use the same location as in
+  # in the ground truth examples, that is the first line.
+  list_op = compute_ops(dsl_code[0])
+
+  try:
+    results = compute_result(list_op, list_num)[-1]
+  except:  # pylint: disable=bare-except
+    results = None
+  return results
+
+
+def is_number(s):
+  try:
+    float(s)
+    return True
+  except:  # pylint: disable=bare-except
+    return False
+
+
+def execute_mathqa_program(problem, program):
+  """Executes the DSL code for a given problem.
+
+  Args:
+    problem: problem formulation (not needed, but we want the same API as
+      in the DSL case).
+    program: Python code.
+
+  Returns:
+    the result of executing of the Python code.
+  """
+  del problem  # problem only needed in the DSL version.
+  # Programs are lists of strings. We need to concatenate them in order to exec.
+  program = '\n'.join(program)
+  var_dict = {}
+  try:
+    # The logic of this is the following: if exec with timeout is working
+    # without exceptions, then we can call exec again and gather the variables.
+    exec(program, globals(), var_dict)  # pylint: disable=exec-used
+    if 'answer' in var_dict and is_number(var_dict['answer']):
+      return float(var_dict['answer'])
+    else:
+      return None
+  except:  # pylint: disable=bare-except
+    return None
+
+
 @gin.configurable(module='trax.data')
 def CreateMathQAInputs(  # pylint: disable=invalid-name
     dataset_path=None,
     train=True,
+    test=False,
+    challenge=False,
     tolerance=0.01,
     cumulative=True,
     python_code=False,
+    full_dict=False,
     partial_results=True,
     nlp_rationale=False,
     correct_answer=False,
@@ -2204,8 +2300,12 @@ def CreateMathQAInputs(  # pylint: disable=invalid-name
 
   Args:
     dataset_path: a path with the MathQA dataset.
-    train: if True, then generate training examples, otherwhise generate
-      validation examples (the dataset has also a test set).
+    train: if True, then generate training examples; if train, test and
+      challenge are set to False generate validation examples.
+    test: if train is set to False and test is set to True,
+      then generate test examples.
+    challenge: if train and test are set to False and challenge is set to True,
+      then generate challenge examples.
     tolerance: if for a given example relative difference between Python result
       and the result declared in the dataset exceeds the level, then the example
       is dropped; tolerances ranging from 0.1 to 0.001 yield from 18K to 21K
@@ -2216,6 +2316,8 @@ def CreateMathQAInputs(  # pylint: disable=invalid-name
       operations.
     python_code: if set to True, then generates python code instead of
       MathQA commands.
+    full_dict: if set to True, then Python examples are returned together with
+      the DSL code and the NLP rationale.
     partial_results: if set to True, then partial results will be reported as
       part of the input, e.g. input - problem + numbers + op1 + #1 + op2 + #2 +
       op3 + #3, target - op4, where #k is the partial results from operation
@@ -2248,6 +2350,10 @@ def CreateMathQAInputs(  # pylint: disable=invalid-name
   """
   if train:
     dataset_path = os.path.join(dataset_path, 'train.json')
+  elif test:
+    dataset_path = os.path.join(dataset_path, 'test.json')
+  elif challenge:
+    dataset_path = os.path.join(dataset_path, 'challenge_test.json')
   else:
     dataset_path = os.path.join(dataset_path, 'dev.json')
   # Opening with GFile allows to use remotely stored files, e.g.
@@ -2302,9 +2408,12 @@ def CreateMathQAInputs(  # pylint: disable=invalid-name
             # is coorect.
             exec(target_values, globals(), var_dict)  # pylint: disable=exec-used
             if math.isclose(answer_num, var_dict['answer'], rel_tol=tolerance):
-              yield input_values, target_values, np.array([1] *
-                                                          len(target_values))
-
+              if full_dict:
+                yield input_values, target_values, example[
+                    'linear_formula'], example['Rationale']
+              else:
+                yield input_values, target_values, np.array([1] *
+                                                            len(target_values))
           elif nlp_rationale:
             input_values = 'infer full rationale: ' + input_prefix
             target_values = example['Rationale']

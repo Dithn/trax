@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Tests for RL training."""
 
 import functools
@@ -46,7 +45,7 @@ class TrainingTest(absltest.TestCase):
     )
 
   def test_policy_gradient_smoke(self):
-    """Check save and restore of policy agent."""
+    """Smoke test of PolicyGradient."""
     task = rl_task.RLTask('CartPole-v0', max_steps=2)
     tmp_dir = self.create_tempdir().full_path
     agent = training.PolicyGradient(
@@ -57,6 +56,23 @@ class TrainingTest(absltest.TestCase):
         n_trajectories_per_epoch=2,
         n_eval_episodes=1,
         output_dir=tmp_dir)
+    agent.run(1)
+    self.assertEqual(agent.current_epoch, 1)
+
+  def test_expert_iteration_smoke(self):
+    """Smoke test of ExpertIteration."""
+    task = rl_task.RLTask('CartPole-v0', max_steps=2)
+    tmp_dir = self.create_tempdir().full_path
+    agent = training.ExpertIteration(
+        task,
+        model_fn=self._model_fn,
+        optimizer=opt.Adam,
+        batch_size=2,
+        n_trajectories_per_epoch=2,
+        n_train_steps_per_epoch=2,
+        n_eval_episodes=1,
+        output_dir=tmp_dir,
+    )
     agent.run(1)
     self.assertEqual(agent.current_epoch, 1)
 

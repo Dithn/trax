@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -56,44 +56,6 @@ class ReformerE2ETest(absltest.TestCase):
     output_dir = self.create_tempdir().full_path
     _ = trainer_lib.train(output_dir=output_dir)
 
-  def test_reformer2_wmt_ende(self):
-    batch_size_per_device = 2
-    steps = 1
-    n_layers = 2
-    d_ff = 32
-
-    gin.parse_config_file('reformer2_wmt_ende.gin')
-
-    gin.bind_parameter('data_streams.data_dir', _TESTDATA)
-    gin.bind_parameter('batcher.batch_size_per_device', batch_size_per_device)
-    gin.bind_parameter('batcher.buckets',
-                       ([512], [batch_size_per_device, batch_size_per_device]))
-    gin.bind_parameter('train.steps', steps)
-    gin.bind_parameter('Reformer2.n_encoder_layers', n_layers)
-    gin.bind_parameter('Reformer2.n_decoder_layers', n_layers)
-    gin.bind_parameter('Reformer2.d_ff', d_ff)
-
-    output_dir = self.create_tempdir().full_path
-    _ = trainer_lib.train(output_dir=output_dir)
-
-  def test_reformer2_copy(self):
-    batch_size_per_device = 2
-    steps = 1
-    n_layers = 2
-    d_ff = 32
-
-    gin.parse_config_file('reformer2_copy.gin')
-
-    gin.bind_parameter('batcher.batch_size_per_device', batch_size_per_device)
-    gin.bind_parameter('batcher.buckets', ([64], [1, 1]))  # batch size 1.
-    gin.bind_parameter('train.steps', steps)
-    gin.bind_parameter('Reformer2.n_encoder_layers', n_layers)
-    gin.bind_parameter('Reformer2.n_decoder_layers', n_layers)
-    gin.bind_parameter('Reformer2.d_ff', d_ff)
-
-    output_dir = self.create_tempdir().full_path
-    _ = trainer_lib.train(output_dir=output_dir)
-
   def test_reformer_copy(self):
     batch_size_per_device = 2
     steps = 1
@@ -109,24 +71,6 @@ class ReformerE2ETest(absltest.TestCase):
     gin.bind_parameter('ReformerLM.n_layers', n_layers)
     gin.bind_parameter('ReformerLM.d_ff', d_ff)
     gin.bind_parameter('ReformerLM.d_model', d_model)
-
-    output_dir = self.create_tempdir().full_path
-    _ = trainer_lib.train(output_dir=output_dir)
-
-  def test_reformer2_purelsh_copy(self):
-    batch_size_per_device = 2
-    steps = 1
-    n_layers = 2
-    d_ff = 32
-
-    gin.parse_config_file('reformer2_purelsh_copy.gin')
-
-    gin.bind_parameter('batcher.batch_size_per_device', batch_size_per_device)
-    gin.bind_parameter('batcher.buckets', ([64], [1, 1]))  # batch size 1.
-    gin.bind_parameter('train.steps', steps)
-    gin.bind_parameter('Reformer2.n_encoder_layers', n_layers)
-    gin.bind_parameter('Reformer2.n_decoder_layers', n_layers)
-    gin.bind_parameter('Reformer2.d_ff', d_ff)
 
     output_dir = self.create_tempdir().full_path
     _ = trainer_lib.train(output_dir=output_dir)

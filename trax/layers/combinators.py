@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Combinators for composing layers."""
+
+import copy
 
 from trax import fastmath
 from trax.fastmath import numpy as jnp
@@ -976,6 +977,35 @@ class BatchLeadingAxes(base.Layer):
     weights, layer_state = self.sublayer.init(batched_signature, use_cache=True)
     self.state = (layer_state,)
     self.weights = (weights,)
+
+
+def Bidirectional(forward_layer, axis=1, merge_layer=Concatenate()):
+  """Bidirectional combinator for RNNs.
+
+  Args:
+    forward_layer: A layer, such as `trax.layers.LSTM` or `trax.layers.GRU`.
+    axis: a time axis of the inputs. Default value is `1`.
+    merge_layer: A combinator used to combine outputs of the forward
+      and backward RNNs. Default value is 'trax.layers.Concatenate'.
+
+  Example:
+      Bidirectional(RNN(n_units=8))
+
+  Returns:
+    The Bidirectional combinator for RNNs.
+  """
+  backward_layer = copy.deepcopy(forward_layer)
+  flip = base.Fn('_FlipAlongTimeAxis', lambda x: jnp.flip(x, axis=axis))
+  backward = Serial(
+      flip,
+      backward_layer,
+      flip,
+  )
+
+  return Serial(
+      Branch(forward_layer, backward),
+      merge_layer,
+  )
 
 
 # All module-private helper functions are below.

@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Simplified API (under development) for supervised learning/training in Trax.
 
 This module will eventually replace :py:class:`trainer_lib.Trainer`.
@@ -1292,7 +1291,7 @@ def init_host_and_devices(n_devices=None, random_seed=None):
     random_seed: The passed in value of random_seed or a computed default.
   """
   if fastmath.is_backend(fastmath.Backend.JAX):
-    host_id = jax.host_id()
+    host_id = jax.process_index()
     host_count = jax.host_count()
   else:
     host_id = 0

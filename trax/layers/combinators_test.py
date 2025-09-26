@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Tests for combinator layers."""
 
 from absl.testing import absltest
@@ -785,6 +784,18 @@ class BatchLeadingAxesTest(absltest.TestCase):
     self.assertEqual(ys.shape, (2, 3, 4, 5))
     ys = layer(np.zeros((1, 2, 3, 4, 5)))
     self.assertEqual(ys.shape, (1, 2, 3, 4, 5))
+
+
+class BidirectionalTest(absltest.TestCase):
+
+  def test_dimensionality(self):
+    x = np.ones((2, 3, 8))
+    layer = tl.Bidirectional(tl.GRU(n_units=8))
+    input_signature = shapes.signature(x)
+    _, _ = layer.init(input_signature)
+    yhat = layer(x)
+
+    self.assertEqual(yhat.shape, (2, 3, 8 + 8))
 
 
 if __name__ == '__main__':

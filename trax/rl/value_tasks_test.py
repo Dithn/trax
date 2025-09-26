@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Tests for trax.rl.value_tasks."""
 
 from absl.testing import absltest
@@ -50,7 +49,7 @@ class ValueTasksTest(absltest.TestCase):
     for _ in range(10):
       batch = next(self._trajectory_batch_stream)
       values = value_fn(batch)
-      errors.append(np.mean((values - batch.returns) ** 2))
+      errors.append(np.mean((values - batch.return_) ** 2))
     return np.mean(errors)
 
   def test_value_tasks_smoke(self):

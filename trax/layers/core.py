@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Core layer types and key functions used by various layers."""
 
 from absl import logging
@@ -311,7 +310,12 @@ class Weights(base.Layer):
 def PrintShape(n_in=1, msg=''):
   """Prints the shapes of `n_in` inputs and returns then unchanged."""
   def Fwd(xs):
-    shapes_and_dtypes = ', '.join([str(x.shape) + f'[{x.dtype}]' for x in xs])
+    def format_shape(x):  # pylint: disable = invalid-name
+      return str(x.shape) + f'[{x.dtype}]'
+    if n_in > 1:
+      shapes_and_dtypes = ', '.join([format_shape(x) for x in xs])
+    else:
+      shapes_and_dtypes = format_shape(xs)
     info = f'PrintShape: {msg}: [{shapes_and_dtypes}]'
     print(info)
     logging.info(info)
@@ -804,8 +808,7 @@ def log_gaussian_pdf(x, mu, sigma):  # pylint: disable=invalid-name
   """
   a = mu.shape[-1] * jnp.log(2 * jnp.pi)
   _, b = jnp.linalg.slogdet(sigma)
-  y = jnp.linalg.solve(sigma, x - mu)
-  y = jnp.expand_dims(y, axis=-1)
+  y = jnp.linalg.solve(sigma, (x - mu)[..., None])
   xm = jnp.expand_dims(x - mu, axis=-2)
   c = jnp.matmul(xm, y)
   c = jnp.squeeze(jnp.squeeze(c, axis=-1), axis=-1)

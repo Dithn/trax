@@ -1,4 +1,4 @@
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@
 
 # -*-Python-*-
 
-include 'reformer2_copy.gin'
+include 'terraformer_copy.gin'
 
 import trax.models
 
 
-# Parameters for Reformer2:
+# Parameters for ConfigurableTerraformer:
 # ==============================================================================
-Reformer2.encoder_attention_type = @SelfAttention
-Reformer2.encoder_decoder_attention_type = @SelfAttention
+ConfigurableTerraformer.encoder_attention_type = @SelfAttention
+ConfigurableTerraformer.encoder_decoder_attention_type = @SelfAttention
 
 # Parameters for SelfAttention:
 # ==============================================================================

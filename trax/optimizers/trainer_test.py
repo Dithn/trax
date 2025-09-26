@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,14 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Tests for accelerated optimization of loss layers."""
 
 import time
 from absl.testing import absltest
 
-from jax import test_util  # pylint: disable=unused-import
-from jax.config import config
+from jax import config
 import numpy as np
 
 from trax import fastmath
@@ -28,7 +26,7 @@ from trax import layers as tl
 from trax import optimizers
 from trax import shapes
 from trax.layers import base
-from trax.models.reformer import reformer
+from trax.models.research import terraformer
 
 
 class TrainerTest(absltest.TestCase):
@@ -54,8 +52,8 @@ class TrainerTest(absltest.TestCase):
     trainer.one_step(labeled_batch, rng)
 
 
-  def test_run_sharded_reformer2(self):
-    """Runs Reformer2 with sharded weights (only on 2+-device systems)."""
+  def test_run_sharded_terraformer(self):
+    """Runs Terraformer with sharded weights (only on 2+-device systems)."""
     if fastmath.local_device_count() == 1:
       return
     base.N_WEIGHTS_SHARDS = fastmath.local_device_count()
@@ -65,7 +63,7 @@ class TrainerTest(absltest.TestCase):
     int_sig = shapes.ShapeDtype((2, 4), dtype=np.int32)
     input_sig = (int_sig, int_sig, int_sig)
     # We want to test rng propagation too, so adding some dropout layers.
-    model = reformer.Reformer2(
+    model = terraformer.ConfigurableTerraformer(
         20, d_model=8, d_ff=32, n_heads=1, dropout=0.0,
         n_encoder_layers=2, n_decoder_layers=2,
         ff_sparsity=(4, 8, 0.0, 1.0),
@@ -202,7 +200,7 @@ class TrainerTest(absltest.TestCase):
     self._assert_all_equal(rev_layer12_weights1, rev_layers1[2].weights)
     self._assert_all_equal(first_layer_weights1, first_layer.weights)
 
-  def test_run_reversible_same_as_default_reformer2(self):
+  def test_run_reversible_same_as_default_terraformer(self):
     """Runs the reversible trainer, check results are the same as default."""
     inputs_batch = np.arange(8).reshape((2, 4)) + 1
     targets_batch = 2 * inputs_batch
@@ -210,10 +208,10 @@ class TrainerTest(absltest.TestCase):
     int_sig = shapes.ShapeDtype((2, 4), dtype=np.int32)
     input_sig = (int_sig, int_sig, int_sig)
     # We want to test rng propagation too, so adding some dropout layers.
-    model = reformer.Reformer2(20, d_model=8, d_ff=32, n_heads=1, dropout=0.0,
-                               n_encoder_layers=2, n_decoder_layers=2,
-                               ff_sparsity=(4, 8, 0.0, 1.0),
-                               pos_type=None, reversible_encoder=True)
+    model = terraformer.ConfigurableTerraformer(
+        20, d_model=8, d_ff=32, n_heads=1, dropout=0.0, n_encoder_layers=2,
+        n_decoder_layers=2, ff_sparsity=(4, 8, 0.0, 1.0), pos_type=None,
+        reversible_encoder=True)
     loss = tl.Serial(tl.LogSoftmax(), tl.CrossEntropyLoss())
     optimizer_fn = optimizers.Adafactor
     blocks, loss_layer = optimizers.trainer.extract_reversible_blocks(

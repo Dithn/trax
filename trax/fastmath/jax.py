@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -189,10 +189,10 @@ JAX_BACKEND = {
     'global_device_count': jax.device_count,
     'grad': jax.grad,
     'value_and_grad': jax.value_and_grad,
-    'index_add': jax.ops.index_add,
-    'index_max': jax.ops.index_max,
-    'index_min': jax.ops.index_min,
-    'index_update': jax.ops.index_update,
+    'index_add': lambda x, idx, y: jnp.asarray(x).at[idx].add(y),
+    'index_max': lambda x, idx, y: jnp.asarray(x).at[idx].max(y),
+    'index_min': lambda x, idx, y: jnp.asarray(x).at[idx].min(y),
+    'index_update': lambda x, idx, y: jnp.asarray(x).at[idx].set(y),
     'jit': jax.jit,
     'local_device_count': jax.local_device_count,
     'logsumexp': jax_special.logsumexp,

@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -45,6 +45,7 @@ from trax.data.inputs import CastTo
 from trax.data.inputs import ConcatenateToLMInput
 from trax.data.inputs import consume_noise_mask
 from trax.data.inputs import CountAndSkip
+from trax.data.inputs import Dup
 from trax.data.inputs import FilterByLength
 from trax.data.inputs import FilterEmptyExamples
 from trax.data.inputs import generate_random_noise_mask

@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,9 +20,8 @@ import os
 
 from absl.testing import absltest
 from absl.testing import parameterized
-from jax import test_util  # pylint: disable=unused-import
-from jax.config import config
-from jax.lib import xla_bridge
+import jax
+from jax import config
 import tensorflow.compat.v2 as tf
 from trax import fastmath
 from trax import layers as tl
@@ -41,7 +40,7 @@ from trax.tf_numpy import numpy as tf_np
 
 def _test_inputs(n_classes, with_weights=False, input_shape=(6, 6, 3)):
   """Make trainer_lib.inputs.Inputs."""
-  batch_size = 2 * xla_bridge.device_count()
+  batch_size = 2 * jax.device_count()
 
   def input_stream(n_devices):
     del n_devices
@@ -67,7 +66,7 @@ def _test_inputs(n_classes, with_weights=False, input_shape=(6, 6, 3)):
 
 def _test_inputs_lm(vocab_size, seq_len, per_device_batch_size=2):
   """Make trainer_lib.inputs.Inputs for language model."""
-  batch_size = per_device_batch_size * xla_bridge.device_count()
+  batch_size = per_device_batch_size * jax.device_count()
 
   def input_stream(_):
     def make_batch(key):
@@ -361,7 +360,7 @@ class TraxTest(parameterized.TestCase):
     with fastmath.use_backend(backend):
       # Prepare model and inputs
       def model(mode='train'):
-        return models.Reformer2(
+        return models.ConfigurableTerraformer(
             mode=mode,
             d_model=16,
             d_ff=16,
@@ -405,7 +404,7 @@ class TraxTest(parameterized.TestCase):
       # Prepare model and inputs
 
       def model(mode='train'):
-        return models.Reformer2(
+        return models.ConfigurableTerraformer(
             mode=mode,
             d_model=16,
             d_ff=16,

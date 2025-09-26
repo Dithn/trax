@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Transformer models: encoder, decoder, language model, and encoder-decoder.
 
 The "Transformer" name and network architecture were introduced in the paper
@@ -90,7 +89,7 @@ def TransformerEncoder(vocab_size,
     raw (non-normalized) activations over a range of output classes.
   """
   def _Dropout():
-    tl.Dropout(rate=dropout, shared_axes=dropout_shared_axes, mode=mode)
+    return tl.Dropout(rate=dropout, shared_axes=dropout_shared_axes, mode=mode)
 
   def _EncBlock():
     return _EncoderBlock(d_model, d_ff, n_heads, dropout, dropout_shared_axes,
@@ -615,4 +614,3 @@ def _FeedForwardBlock(d_model,
       _Dropout(),
       tl.Dense(d_model),
   ]
-

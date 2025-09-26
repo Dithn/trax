@@ -1,4 +1,4 @@
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ data_streams.bare_preprocess_fn = \
 # 0.0442 ~= 512^-0.5 = d_model^-0.5
 multifactor.constant = 0.0442
 multifactor.factors = 'constant * linear_warmup * rsqrt_decay'
-multifactor.warmup_steps = 16000
+multifactor.warmup_steps = 8000
 
 # Parameters for Adam:
 # ==============================================================================
@@ -51,9 +51,9 @@ Adam.eps = 1e-09
 
 # Parameters for train:
 # ==============================================================================
-train.eval_frequency = 500
-train.eval_steps = 256
-train.model = @trax.models.FunnelTransformerLM
+train.eval_frequency = 1000
+train.eval_steps = 512
+train.model = @trax.models.HourglassLM
 train.optimizer = @trax.optimizers.Adam
 train.steps = 400000
 train.checkpoints_at = \
@@ -62,14 +62,14 @@ train.checkpoints_at = \
 train.permanent_checkpoints_at = \
     [100000, 150000, 200000, 250000, 300000, 350000]
 
-# Parameters for FunnelTransformerLM:
+# Parameters for HourglassLM:
 # ==============================================================================
-FunnelTransformerLM.d_ff = 2048
-FunnelTransformerLM.d_model = 512
-FunnelTransformerLM.dropout = 0.01
-FunnelTransformerLM.n_funnel_blocks = (12,)
-FunnelTransformerLM.n_heads = 8
-FunnelTransformerLM.shorten_factors = (3,)
-FunnelTransformerLM.vanilla_layers = (1, 1)
-FunnelTransformerLM.vocab_size = 256
-FunnelTransformerLM.ff_activation = @trax.layers.FastGelu
+HourglassLM.d_ff = 2048
+HourglassLM.d_model = 512
+HourglassLM.dropout = 0.01
+HourglassLM.n_heads = 8
+HourglassLM.vanilla_layers = (3, 3)
+HourglassLM.hierarchy = '24@3'
+HourglassLM.vocab_size = 256
+HourglassLM.attention_downsampling_fn = @LinearPooling
+HourglassLM.ff_activation = @trax.layers.FastGelu

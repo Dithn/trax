@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,10 +26,11 @@ from trax.models import transformer
 from trax.models.reformer import reformer
 from trax.models.research import bert
 from trax.models.research import configurable_transformer
-from trax.models.research import funnel_transformer
+from trax.models.research import hourglass
 from trax.models.research import layerdrop_transformer
 from trax.models.research import rezero
 from trax.models.research import rse
+from trax.models.research import terraformer
 from trax.models.research import transformer2
 
 
@@ -46,6 +47,7 @@ FrameStackMLP = model_configure(atari_cnn.FrameStackMLP)
 BERT = model_configure(bert.BERT)
 BERTClassifierHead = model_configure(bert.BERTClassifierHead)
 BERTRegressionHead = model_configure(bert.BERTRegressionHead)
+ConfigurableTerraformer = model_configure(terraformer.ConfigurableTerraformer)
 ConfigurableTransformer = model_configure(
     configurable_transformer.ConfigurableTransformer)
 ConfigurableTransformerEncoder = model_configure(
@@ -57,7 +59,6 @@ NeuralGPU = model_configure(neural_gpu.NeuralGPU)
 Reformer = model_configure(reformer.Reformer)
 ReformerLM = model_configure(reformer.ReformerLM)
 ReformerShortenLM = model_configure(reformer.ReformerShortenLM)
-Reformer2 = model_configure(reformer.Reformer2)
 Resnet50 = model_configure(resnet.Resnet50)
 ReZeroTransformer = model_configure(
     rezero.ReZeroTransformer)
@@ -87,11 +88,5 @@ Quality = model_configure(rl.Quality)
 RNNLM = model_configure(rnn.RNNLM)
 GRULM = model_configure(rnn.GRULM)
 LSTMSeq2SeqAttn = model_configure(rnn.LSTMSeq2SeqAttn)
-FunnelTransformerEncoder = model_configure(
-    funnel_transformer.FunnelTransformerEncoder)
-FunnelTransformer = model_configure(
-    funnel_transformer.FunnelTransformer)
 ResidualShuffleExchange = model_configure(rse.ResidualShuffleExchange)
-FunnelTransformerLM = model_configure(
-    funnel_transformer.FunnelTransformerLM)
-RelformerLM = model_configure(funnel_transformer.RelformerLM)
+HourglassLM = model_configure(hourglass.HourglassLM)

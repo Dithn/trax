@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 # limitations under the License.
 
 # coding=utf-8
-# coding=utf-8
 """Install trax."""
 
 from setuptools import find_packages
@@ -22,7 +21,7 @@ from setuptools import setup
 
 setup(
     name='trax',
-    version='1.3.8',
+    version='1.4.1',
     description='Trax',
     long_description=(
         'Trax helps you understand deep learning. We start with basic maths and'
@@ -47,13 +46,13 @@ setup(
         'psutil',
         'scipy',
         'six',
-        't5',
         'tensorflow-datasets',
         'tensorflow-text',
     ],
     extras_require={
         'tensorflow': ['tensorflow>=1.15.0'],
         'tensorflow_gpu': ['tensorflow-gpu>=1.15.0'],
+        't5': ['t5>=0.4.0'],
         'tests': [
             'attrs',
             'jupyter',

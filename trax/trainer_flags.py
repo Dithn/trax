@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Flags for trainer.py and rl_trainer.py.
 
 We keep these flags in sync across the trainer and the rl_trainer binaries.
@@ -36,7 +35,7 @@ flags.DEFINE_multi_string('config',
 # TPU Flags
 flags.DEFINE_bool('use_tpu', False, "Whether we're running on TPU.")
 flags.DEFINE_string('jax_xla_backend',
-                    'xla',
+                    '',
                     'Either "xla" for the XLA service directly, or "tpu_driver"'
                     'for a TPU Driver backend.')
 flags.DEFINE_string('jax_backend_target',
@@ -49,6 +48,13 @@ flags.DEFINE_string('dataset', None, 'Which dataset to use.')
 flags.DEFINE_string('model', None, 'Which model to train.')
 flags.DEFINE_string('data_dir', None, 'Path to the directory with data.')
 flags.DEFINE_integer('log_level', logging.INFO, 'Log level.')
+
+# JAX/XLA GPU cluster flags.
+flags.DEFINE_string('gpu_cluster_chief_ip', '', 'IP of GPU cluster chief.')
+flags.DEFINE_integer('gpu_cluster_n_hosts', 1,
+                     'Number of hosts in GPU cluster.')
+flags.DEFINE_integer('gpu_cluster_host_id', 0, 'Host id inside GPU cluster.')
+flags.DEFINE_integer('gpu_cluster_port', 5005, 'Port to use in GPU cluster.')
 
 # TensorFlow Flags
 flags.DEFINE_bool('enable_eager_execution',

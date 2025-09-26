@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Multi-device accelerated optimization."""
 
 from concurrent import futures
@@ -31,6 +30,12 @@ from trax import layers as tl
 from trax.fastmath import numpy as jnp
 from trax.layers import base
 from trax.layers import combinators as cb
+
+
+# NOTE(dsuo): _multi_device_update_fn is not compatible with
+# jax_pmap_shmap_merge=True because `jax.pmap` requires inputs to be explicitly
+# sharded as the underlying `jax.jit` expects.
+jax.config.update('jax_pmap_shmap_merge', False)
 
 
 class Trainer:
@@ -55,8 +60,8 @@ class Trainer:
     self._adasum = adasum
 
     # optimizer slots and opt_params may need to be replicated
-    self._slots, self._opt_params = tl.for_n_devices(
-        (self._optimizer.slots, self._optimizer.opt_params), self._n_devices)
+    self._slots, self._opt_params = tl.on_cpu(tl.for_n_devices(
+        (self._optimizer.slots, self._optimizer.opt_params), self._n_devices))
 
     # accelerated version of model+loss to replicate weights and state
     self._accelerated_model_with_loss = tl.Accelerate(
@@ -107,7 +112,7 @@ class Trainer:
   def slots(self, slots):
     """Sets the slots of the optimizers and this class (replicated)."""
     self._optimizer.slots = slots
-    self._slots = tl.for_n_devices(slots, self._n_devices)
+    self._slots = tl.on_cpu(tl.for_n_devices(slots, self._n_devices))
 
   def one_step(self, batch, rng, step=0, learning_rate=None):
     """Runs one training step, to update model and optimizer parameters.
@@ -441,8 +446,7 @@ class ReversibleSerialTrainer:
 
   def _free_accelerators(self, exceptions=(), keep_constants=True):
     """Deletes all live buffers from accelerator with no safety guarantees."""
-    backend = jax.lib.xla_bridge.get_backend()
-    live_buffers = backend.live_buffers()
+    live_buffers = jax.live_arrays()
     logging.info('Deleting %d live buffers.', len(live_buffers))
     exceptions_buffers = []
     for x in fastmath.tree_flatten(exceptions):

@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Layers for computing loss functions and evaluation metrics.
 
 A metric layer computes a scalar value from two or three ndarray inputs:
@@ -104,7 +103,7 @@ def _n_weights_per_core(weights):  # pylint: disable=invalid-name
     return weights_sum
   else:
     try:
-      n_devices_total = fastmath.psum(jnp.array(1.0), 'batch')
+      n_devices_total = fastmath.psum(1, 'batch')
       return fastmath.psum(weights_sum, 'batch') / n_devices_total
     except (NameError, ValueError):  # running outside of pmap, e.g., on init
       return weights_sum  # fall back to the sum
@@ -237,13 +236,13 @@ def CategoryCrossEntropy(label_smoothing=None):
   """
   def f(model_output, targets):  # pylint: disable=invalid-name
     cross_entropies = _category_cross_entropy(
-        model_output, targets, label_smoothing)
+        model_output, targets, label_smoothing, 0.0)
     return jnp.average(cross_entropies)
 
   return base.Fn('CategoryCrossEntropy', f)
 
 
-def WeightedCategoryCrossEntropy(label_smoothing=None):
+def WeightedCategoryCrossEntropy(label_smoothing=None, cutoff=0.0):
   r"""Returns a layer like ``CategoryCrossEntropy``, with weights as third input.
 
   The layer takes three inputs:
@@ -267,10 +266,11 @@ def WeightedCategoryCrossEntropy(label_smoothing=None):
 
   Args:
     label_smoothing: Creates soft targets if provided. Must be between 0 and 1.
+    cutoff: Prevent loss lower than this cutoff (0.0 meaning none by default).
   """
   def f(model_output, targets, weights):  # pylint: disable=invalid-name
     cross_entropies = _category_cross_entropy(
-        model_output, targets, label_smoothing)
+        model_output, targets, label_smoothing, cutoff)
     return jnp.sum(cross_entropies * weights) / _n_weights_per_core(weights)
 
   return base.Fn('WeightedCategoryCrossEntropy', f)
@@ -635,7 +635,7 @@ def _WeightedSequenceMean():
 
 
 def _category_cross_entropy(  # pylint: disable=invalid-name
-    model_output, targets, label_smoothing):
+    model_output, targets, label_smoothing, cutoff):
   """Computes category cross entropy with label smoothing."""
   n_categories = model_output.shape[-1]
   target_distributions = core.one_hot(targets, n_categories)
@@ -646,4 +646,8 @@ def _category_cross_entropy(  # pylint: disable=invalid-name
     target_distributions *= (1. - label_smoothing)
     target_distributions += label_smoothing / n_categories
   model_log_distributions = core.log_softmax(model_output)
-  return - jnp.sum(target_distributions * model_log_distributions, axis=-1)
+  cross_ent = - jnp.sum(target_distributions * model_log_distributions, axis=-1)
+  if cutoff > 0.0:
+    return jnp.maximum(cross_ent, cutoff) - cutoff
+  else:
+    return cross_ent

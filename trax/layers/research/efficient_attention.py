@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Attention Layers optimized for efficiency (second-pass implementation).
 
 The approach taken in the first round of efficient attention implementations
@@ -46,6 +45,7 @@ from trax.layers import combinators as cb
 from trax.layers import core
 from trax.layers import initializers as init
 from trax.layers import sparsity as sp
+from trax.layers.research import rotary_positional_embedding as rotary_pe
 
 
 ####################################################### Functions
@@ -571,7 +571,7 @@ class EfficientAttentionBase(base.Layer):
         assert new_vals.shape[1] == seqlen
         if seqlen == 1:
           return fastmath.index_update(
-              mem_element, jax.ops.index[:, mem_end], new_vals[:, 0, ...])
+              mem_element, jax.numpy.index_exp[:, mem_end], new_vals[:, 0, ...])
         else:
           return fastmath.dynamic_update_slice_in_dim(
               mem_element, new_vals, mem_end, axis=1)
@@ -728,12 +728,13 @@ class EfficientAttentionBase(base.Layer):
 
     def tree_update(tree, indices, new_values):
       return fastmath.nested_map_multiarg(
-          lambda x, y: fastmath.index_update(x, jax.ops.index[indices], y),
+          lambda x, y: fastmath.index_update(x, jax.numpy.index_exp[indices],
+                                             y),
           tree, new_values)
 
     def tree_add(tree, indices, new_values):
       return fastmath.nested_map_multiarg(
-          lambda x, y: fastmath.index_add(x, jax.ops.index[indices], y),
+          lambda x, y: fastmath.index_add(x, jax.numpy.index_exp[indices], y),
           tree, new_values)
 
     if compute_grad:
@@ -884,7 +885,8 @@ class EfficientAttentionBase(base.Layer):
           o_mex, s_mex = forward_fn(i_mex, weights)
 
         if compute_output:
-          o_all = fastmath.index_add(o_all, jax.ops.index[example_range], o_mex)
+          o_all = fastmath.index_add(o_all, jax.numpy.index_exp[example_range],
+                                     o_mex)
         if update_state:
           s_all = tree_update(s_all, state_range, s_mex)
         if compute_grad:
@@ -1066,6 +1068,8 @@ class SelfAttention(base.Layer):
   def init_weights_and_state(self, input_signature):
     if not isinstance(input_signature, (tuple, list)):
       input_signature = (input_signature,)
+    else:
+      input_signature = (input_signature[0],)
     input_signature_unbatched = fastmath.nested_map(
         lambda x: type(x)(shape=x.shape[1:], dtype=x.dtype),
         input_signature)
@@ -1360,7 +1364,7 @@ class SelfAttention(base.Layer):
         assert new_vals.shape[1] == seqlen
         if seqlen == 1:
           return fastmath.index_update(
-              mem_element, jax.ops.index[:, mem_end], new_vals[:, 0, ...])
+              mem_element, jax.numpy.index_exp[:, mem_end], new_vals[:, 0, ...])
         else:
           return fastmath.dynamic_update_slice_in_dim(
               mem_element, new_vals, mem_end, axis=1)
@@ -1517,12 +1521,13 @@ class SelfAttention(base.Layer):
 
     def tree_update(tree, indices, new_values):
       return fastmath.nested_map_multiarg(
-          lambda x, y: fastmath.index_update(x, jax.ops.index[indices], y),
+          lambda x, y: fastmath.index_update(x, jax.numpy.index_exp[indices],
+                                             y),
           tree, new_values)
 
     def tree_add(tree, indices, new_values):
       return fastmath.nested_map_multiarg(
-          lambda x, y: fastmath.index_add(x, jax.ops.index[indices], y),
+          lambda x, y: fastmath.index_add(x, jax.numpy.index_exp[indices], y),
           tree, new_values)
 
     if compute_grad:
@@ -1673,7 +1678,8 @@ class SelfAttention(base.Layer):
           o_mex, s_mex = forward_fn(i_mex, weights)
 
         if compute_output:
-          o_all = fastmath.index_add(o_all, jax.ops.index[example_range], o_mex)
+          o_all = fastmath.index_add(o_all, jax.numpy.index_exp[example_range],
+                                     o_mex)
         if update_state:
           s_all = tree_update(s_all, state_range, s_mex)
         if compute_grad:
@@ -2193,7 +2199,7 @@ class LSHSelfAttention(base.Layer):
         assert new_vals.shape[1] == seqlen
         if seqlen == 1:
           return fastmath.index_update(
-              mem_element, jax.ops.index[:, mem_end], new_vals[:, 0, ...])
+              mem_element, jax.numpy.index_exp[:, mem_end], new_vals[:, 0, ...])
         else:
           return fastmath.dynamic_update_slice_in_dim(
               mem_element, new_vals, mem_end, axis=1)
@@ -2350,12 +2356,13 @@ class LSHSelfAttention(base.Layer):
 
     def tree_update(tree, indices, new_values):
       return fastmath.nested_map_multiarg(
-          lambda x, y: fastmath.index_update(x, jax.ops.index[indices], y),
+          lambda x, y: fastmath.index_update(x, jax.numpy.index_exp[indices],
+                                             y),
           tree, new_values)
 
     def tree_add(tree, indices, new_values):
       return fastmath.nested_map_multiarg(
-          lambda x, y: fastmath.index_add(x, jax.ops.index[indices], y),
+          lambda x, y: fastmath.index_add(x, jax.numpy.index_exp[indices], y),
           tree, new_values)
 
     if compute_grad:
@@ -2506,7 +2513,8 @@ class LSHSelfAttention(base.Layer):
           o_mex, s_mex = forward_fn(i_mex, weights)
 
         if compute_output:
-          o_all = fastmath.index_add(o_all, jax.ops.index[example_range], o_mex)
+          o_all = fastmath.index_add(o_all, jax.numpy.index_exp[example_range],
+                                     o_mex)
         if update_state:
           s_all = tree_update(s_all, state_range, s_mex)
         if compute_grad:
@@ -2976,7 +2984,7 @@ class PureLSHSelfAttention(base.Layer):
         assert new_vals.shape[1] == seqlen
         if seqlen == 1:
           return fastmath.index_update(
-              mem_element, jax.ops.index[:, mem_end], new_vals[:, 0, ...])
+              mem_element, jax.numpy.index_exp[:, mem_end], new_vals[:, 0, ...])
         else:
           return fastmath.dynamic_update_slice_in_dim(
               mem_element, new_vals, mem_end, axis=1)
@@ -3145,12 +3153,13 @@ class PureLSHSelfAttention(base.Layer):
 
     def tree_update(tree, indices, new_values):
       return fastmath.nested_map_multiarg(
-          lambda x, y: fastmath.index_update(x, jax.ops.index[indices], y),
+          lambda x, y: fastmath.index_update(x, jax.numpy.index_exp[indices],
+                                             y),
           tree, new_values)
 
     def tree_add(tree, indices, addends):
       return fastmath.nested_map_multiarg(
-          lambda x, y: fastmath.index_add(x, jax.ops.index[indices], y),
+          lambda x, y: fastmath.index_add(x, jax.numpy.index_exp[indices], y),
           tree, addends)
 
     if compute_grad:
@@ -3256,9 +3265,16 @@ class PureLSHSelfAttention(base.Layer):
     return (o_all, s_all, i_ct_all)
 
 
-def _ProjectAndSplitHeads(d_model, n_heads, use_bias, num_weights=2,  # pylint: disable=invalid-name
-                          sparsity=16, length_kernel_size=3,
-                          weights_format='sparse', mode='train'):
+def _ProjectAndSplitHeads(  # pylint: disable=invalid-name
+    d_model,
+    n_heads,
+    use_bias,
+    num_weights=2,
+    sparsity=16,
+    length_kernel_size=3,
+    weights_format='sparse',
+    rotary_position_emb=False,
+    mode='train'):
   """Creates the QK and V activations from input."""
   # There can be either two or three weights:
   # two - qk and v or three - q, k, v
@@ -3279,15 +3295,20 @@ def _ProjectAndSplitHeads(d_model, n_heads, use_bias, num_weights=2,  # pylint: 
   if weights_format == 'model' and num_weights == 3:
     return cb.Serial(
         # Create the raw Q, K, V projections.
-        cb.Branch(core.Dense(d_model, use_bias=use_bias),
-                  core.Dense(d_model, use_bias=use_bias),
-                  core.Dense(d_model, use_bias=use_bias)),      # q, k, v
+        cb.Branch(
+            core.Dense(d_model, use_bias=use_bias),
+            core.Dense(d_model, use_bias=use_bias),
+            core.Dense(d_model, use_bias=use_bias)),  # q, k, v
+        # Optionally, rotate Q and K vectors if rotary embeddings are used.
+        cb.Parallel(rotary_pe.Rotate(), rotary_pe.Rotate(), None)
+        if rotary_position_emb else [],
         # Average Q and K into one single QK tensor.
         core.Fn('QKAvg', lambda x, y: (x + y) / 2.0, n_out=1),  # qk,   v
         # Split heads and combine with batch dimension to get two tensors of
         # (batch * n_heads, seq_len, d_head) shape.
-        cb.Parallel(attention.SplitIntoHeads(n_heads),
-                    attention.SplitIntoHeads(n_heads))          # qk,   v
+        cb.Parallel(
+            attention.SplitIntoHeads(n_heads),
+            attention.SplitIntoHeads(n_heads))  # qk,   v
     )
 
   if weights_format == 'sparse' and num_weights == 3:
@@ -3337,13 +3358,18 @@ def _ProjectAndSplitHeads(d_model, n_heads, use_bias, num_weights=2,  # pylint: 
         )
     )
 
-   # We want to train from scratch and have only two weights, w_qk and w_v.
+  # We want to train from scratch and have only two weights, w_qk and w_v.
   if weights_format == 'model' and num_weights == 2:
     return cb.Branch(
-        [core.Dense(d_model, use_bias=use_bias),
-         attention.SplitIntoHeads(n_heads)],
-        [core.Dense(d_model, use_bias=use_bias),
-         attention.SplitIntoHeads(n_heads)],
+        [
+            core.Dense(d_model, use_bias=use_bias),
+            rotary_pe.Rotate() if rotary_position_emb else [],
+            attention.SplitIntoHeads(n_heads)
+        ],
+        [
+            core.Dense(d_model, use_bias=use_bias),
+            attention.SplitIntoHeads(n_heads)
+        ],
     )
 
   assert weights_format == 'head'
@@ -3481,12 +3507,18 @@ class PureLSHSelfAttentionWrapper(cb.Serial):
                num_weights=3,
                sparsity=16,
                weights_format='model',
+               rotary_position_emb=False,
                **pure_lsh_implementation_kwargs):
     d_model = d_qk * n_heads
-    self._qkv = _ProjectAndSplitHeads(d_model, n_heads, bias,
-                                      num_weights=num_weights,
-                                      sparsity=sparsity,
-                                      weights_format=weights_format, mode=mode)
+    self._qkv = _ProjectAndSplitHeads(
+        d_model,
+        n_heads,
+        bias,
+        num_weights=num_weights,
+        sparsity=sparsity,
+        weights_format=weights_format,
+        rotary_position_emb=rotary_position_emb,
+        mode=mode)
     self._attn = pure_lsh_implementation(n_heads=n_heads,
                                          d_qk=d_qk,
                                          d_v=d_v,

@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Implementations of common recurrent neural network cells (RNNs)."""
 
 from trax import fastmath
@@ -90,16 +89,46 @@ def MakeZeroState(depth_multiplier=1):
   return base.Fn('MakeZeroState', f)
 
 
-def LSTM(n_units, mode='train'):
-  """LSTM running on axis 1."""
-  zero_state = MakeZeroState(depth_multiplier=2)  # pylint: disable=no-value-for-parameter
-  return cb.Serial(
-      cb.Branch([], zero_state),
-      cb.Scan(LSTMCell(n_units=n_units), axis=1, mode=mode),
-      cb.Select([0], n_in=2),  # Drop RNN state.
-      # Set the name to LSTM and don't print sublayers.
-      name=f'LSTM_{n_units}', sublayers_to_print=[]
-  )
+def LSTM(n_units, mode='train', return_state=False, initial_state=False):
+  """LSTM running on axis 1.
+
+  Args:
+    n_units: `n_units` for the `LSTMCell`.
+    mode: if 'predict' then we save the previous state for one-by-one inference.
+    return_state: Boolean. Whether to return the latest status in addition to
+      the output. Default: False.
+    initial_state: Boolean. If the state RNN (c, h) is to be obtained from the
+      stack. Default: False.
+
+  Returns:
+    A LSTM layer.
+  """
+
+  if not initial_state:
+    zero_state = MakeZeroState(depth_multiplier=2)  # pylint: disable=no-value-for-parameter
+    if return_state:
+      return cb.Serial(
+          cb.Branch([], zero_state),
+          cb.Scan(LSTMCell(n_units=n_units), axis=1, mode=mode),
+          name=f'LSTM_{n_units}',
+          sublayers_to_print=[])
+    else:
+      return cb.Serial(
+          cb.Branch([], zero_state),  # fill state RNN with zero.
+          cb.Scan(LSTMCell(n_units=n_units), axis=1, mode=mode),
+          cb.Select([0], n_in=2),  # Drop RNN state.
+          # Set the name to LSTM and don't print sublayers.
+          name=f'LSTM_{n_units}', sublayers_to_print=[])
+  else:
+    if return_state:
+      return cb.Serial(
+          cb.Scan(LSTMCell(n_units=n_units), axis=1, mode=mode),
+          name=f'LSTM_{n_units}', sublayers_to_print=[])
+    else:
+      return cb.Serial(
+          cb.Scan(LSTMCell(n_units=n_units), axis=1, mode=mode),
+          cb.Select([0], n_in=2),  # Drop RNN state.
+          name=f'LSTM_{n_units}', sublayers_to_print=[])
 
 
 class GRUCell(base.Layer):
@@ -258,6 +287,38 @@ def InnerSRUCell():
   return base.Fn('InnerSRUCell', f, n_out=2)
 
 
+def ScanSRUCell(mode, monkey_patched_mask=None):
+  """The inner (non-parallel) computation of an SRU."""
+  if monkey_patched_mask is None:
+    return cb.Scan(InnerSRUCell(), axis=1, mode=mode)
+
+  # This is necessary for Terraformer model. See comments there.
+  # The mask will only be used in Terraformer in predict mode.
+  assert mode == 'predict'
+
+  def update_mask(mask, x_times_one_minus_f):  # pylint: disable=invalid-name
+    initial = jnp.ones(x_times_one_minus_f.shape[:2], dtype=jnp.float32)
+    if initial.shape[1] > 1:
+      updated_mask = fastmath.dynamic_update_slice_in_dim(
+          initial != 0, mask != 0, 1, axis=1)
+    else:
+      updated_mask = initial
+    return updated_mask, x_times_one_minus_f
+
+  def masked_inner_sru_cell(cur_mask, cur_x_times_one_minus_f, cur_f,  # pylint: disable=invalid-name
+                            cur_state):
+    res = ((cur_f * cur_state + cur_x_times_one_minus_f) * cur_mask
+           + (1 - cur_mask) * cur_state)
+    return res, res
+
+  return cb.Serial(
+      monkey_patched_mask.get_layer(),
+      base.Fn('update_mask', update_mask, n_out=2),
+      cb.Scan(base.Fn('MaskedInnerSRUCell', masked_inner_sru_cell, n_out=2),
+              axis=1, mode=mode),
+      )
+
+
 def SRU(n_units, activation=None, mode='train'):
   r"""SRU (Simple Recurrent Unit) layer as in https://arxiv.org/abs/1709.02755.
 
@@ -291,7 +352,7 @@ def SRU(n_units, activation=None, mode='train'):
               lambda r, f, y: (y * (1.0 - f), f, r),    # y * (1 - f), f, r, x
               n_out=3),
       cb.Parallel([], [], cb.Branch(MakeZeroState(), [])),
-      cb.Scan(InnerSRUCell(), axis=1, mode=mode),
+      ScanSRUCell(mode=mode),
       cb.Select([0], n_in=2),                               # act(c), r, x
       activation if activation is not None else [],
       base.Fn('FinalSRUGate', lambda c, r, x: c * r + x * (1 - r) * (3**0.5)),

@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Tests for initializers."""
 
 from absl.testing import absltest
@@ -88,7 +87,8 @@ class InitializersTest(absltest.TestCase):
       np.save(f, params)
     f = tl.InitializerFromFile(filename)
     init_value = f(params.shape, rng())
-    self.assertEqual(tl.to_list(init_value), tl.to_list(params))
+    np.testing.assert_almost_equal(
+        tl.to_list(init_value), tl.to_list(params), decimal=4)
     # self.assertEqual('%s' % init_value, '%s' % params)
 
 

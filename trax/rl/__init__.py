@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ AWRJoint = configure_rl(actor_critic_joint.AWRJoint)
 PPOJoint = configure_rl(actor_critic_joint.PPOJoint)
 
 PolicyGradient = configure_rl(training.PolicyGradient)
+ExpertIteration = configure_rl(training.ExpertIteration)
 DQN = configure_rl(training.DQN)
 
 TimeSeriesModel = gin.external_configurable(

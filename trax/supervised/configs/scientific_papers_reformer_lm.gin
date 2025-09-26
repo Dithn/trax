@@ -1,4 +1,4 @@
-# Copyright 2021 The Trax Authors.
+# Copyright 2025 The Trax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@ LSHSelfAttention.n_hashes = 2
 LSHSelfAttention.n_parallel_heads = 1
 LSHSelfAttention.predict_drop_len = %max_len
 LSHSelfAttention.predict_mem_len = %max_len
-# Reformer2's *encoder* is bidirectional.
+# ConfigurableTerraformer's *encoder* is bidirectional.
 ref2_encoder/LSHSelfAttention.n_chunks_after = 1
 
 # Parameters for multifactor:
